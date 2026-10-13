@@ -28,9 +28,9 @@
     "tui.js"
   ],
   "scripts": {
-    "build": "bun run scripts/build.ts",
+    "bundle": "bun run scripts/build.ts",
     "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun run build"
+    "check": "bun run typecheck && bun run bundle"
   },
   "publishConfig": {
     "access": "public"

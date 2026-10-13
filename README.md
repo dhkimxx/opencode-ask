@@ -104,7 +104,9 @@ bun run check
 }
 ```
 
-`dist/` is committed on purpose. OpenCode only compiles plugin JSX outside `node_modules`, so GitHub and npm installs need the built JavaScript. Run `bun run build` and commit `dist/` with your change. CI fails if `dist/` is out of date.
+`dist/` is committed on purpose. OpenCode only compiles plugin JSX outside `node_modules`, so GitHub and npm installs need the built JavaScript. Run `bun run bundle` and commit `dist/` with your change. CI fails if `dist/` is out of date.
+
+Don't add `build`, `prepare`, `prepack`, or install scripts to `package.json`. npm runs an extra install step for GitHub packages that have them, and that step fails inside OpenCode.
 
 Releases are described in [RELEASING.md](RELEASING.md).
 
