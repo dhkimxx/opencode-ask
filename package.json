@@ -1,0 +1,63 @@
+{
+  "name": "@dhkimxx/opencode-ask",
+  "version": "0.1.0",
+  "description": "Multi-turn side questions for OpenCode 2, in a full-screen panel that never adds to your conversation.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "opencode-tui",
+    "side-question",
+    "btw"
+  ],
+  "homepage": "https://github.com/dhkimxx/opencode-ask#readme",
+  "bugs": {
+    "url": "https://github.com/dhkimxx/opencode-ask/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhkimxx/opencode-ask.git"
+  },
+  "license": "MIT",
+  "author": "dhkimxx",
+  "type": "module",
+  "exports": {
+    "./tui": "./dist/tui.js"
+  },
+  "files": [
+    "dist",
+    "tui.js"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.17",
+    "@opentui/solid": ">=0.5.17",
+    "solid-js": ">=1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentui/core": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@opencode/plugin": "2.0.27",
+    "@opencode/theme": "2.0.27",
+    "@opentui/core": "0.5.17",
+    "@opentui/solid": "0.5.17",
+    "@types/bun": "1.4.3",
+    "solid-js": "1.9.12",
+    "typescript": "5.9.3"
+  }
+}
