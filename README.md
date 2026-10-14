@@ -46,7 +46,7 @@ This installs the plugin and adds it to your `cli.json`. If OpenCode is already 
 To install a specific release, add its tag:
 
 ```sh
-opencode plugin add github:dhkimxx/opencode-ask#v0.3.0
+opencode plugin add github:dhkimxx/opencode-ask#v0.3.1
 ```
 
 Update or remove the plugin with the same name you installed it with:

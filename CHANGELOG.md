@@ -3,6 +3,12 @@
 All notable changes to this project are listed here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.3.1] - 2026-10-14
+
+### Changed
+
+- The `/ask` description says it is a multi-turn chat, so it reads clearly next to `/btw`'s one-shot answer. The command palette lists it as "Open side chat".
+
 ## [0.3.0] - 2026-10-14
 
 ### Changed
@@ -32,6 +38,7 @@ This project follows [Semantic Versioning](https://semver.org).
 - A spinner in the footer and a toast when an answer arrives while the panel is closed.
 - `ctrl+c` in the panel clears the input or closes the panel, instead of quitting OpenCode.
 
+[0.3.1]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.1.0

@@ -120,8 +120,8 @@ export default Plugin.define({
       commands: [
         {
           id: "opencode-ask.open",
-          title: "Ask a side question",
-          description: "Ask about this session in a full-screen panel without adding to the conversation",
+          title: "Open side chat",
+          description: "Multi-turn chat from the session's context without adding to the conversation",
           group: "Session",
           palette: true,
           slash: { name: "ask", arguments: true },
