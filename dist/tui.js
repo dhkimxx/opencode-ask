@@ -7,19 +7,19 @@ import { createElement as _$createElement2 } from "@opentui/solid";
 import { createComponent as _$createComponent2 } from "@opentui/solid";
 import { memo as _$memo } from "@opentui/solid";
 import { Plugin } from "@opencode/plugin/tui";
-import { createSignal as createSignal2, Show as Show2 } from "solid-js";
+import { createSignal, Show as Show2 } from "solid-js";
 
 // src/panel.tsx
-import { use as _$use } from "@opentui/solid";
+import { insert as _$insert } from "@opentui/solid";
 import { createComponent as _$createComponent } from "@opentui/solid";
 import { effect as _$effect } from "@opentui/solid";
-import { insert as _$insert } from "@opentui/solid";
+import { use as _$use } from "@opentui/solid";
 import { createTextNode as _$createTextNode } from "@opentui/solid";
 import { insertNode as _$insertNode } from "@opentui/solid";
 import { setProp as _$setProp } from "@opentui/solid";
 import { createElement as _$createElement } from "@opentui/solid";
 import { TextAttributes } from "@opentui/core";
-import { createEffect, createMemo, createSignal, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
+import { createEffect, createMemo, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
 
 // src/syntax.ts
 import { SyntaxStyle } from "@opentui/core";
@@ -62,21 +62,27 @@ function syntaxStyle(theme) {
 
 // src/panel.tsx
 var PANEL = "opencode-ask.thread";
+var QUESTION_BORDER = {
+  topLeft: "",
+  topRight: "",
+  bottomLeft: "",
+  bottomRight: "",
+  horizontal: " ",
+  vertical: "\u2503",
+  topT: "",
+  bottomT: "",
+  leftT: "",
+  rightT: "",
+  cross: ""
+};
 function AskPanel(props) {
   const context = props.context;
   const theme = () => context.theme;
   const surface = () => props.panel.presentation === "panel" ? theme().background.raised.base : theme().background.base;
-  const field = () => props.panel.presentation === "panel" ? theme().background.raised.high : theme().background.raised.base;
-  const [index, setIndex] = createSignal(Math.max(0, props.thread.length - 1));
-  const current = () => props.thread[index()];
+  const raised = () => props.panel.presentation === "panel" ? theme().background.raised.high : theme().background.raised.base;
   let input;
   let scroll;
-  createEffect(on(() => props.thread.length, (length) => setIndex(Math.max(0, length - 1)), {
-    defer: true
-  }));
-  createEffect(on(index, () => scroll?.scrollTo(0), {
-    defer: true
-  }));
+  const rows = new Map;
   const release = (style) => {
     context.renderer.idle().catch(() => {}).finally(() => style.destroy());
   };
@@ -87,6 +93,16 @@ function AskPanel(props) {
     return next;
   });
   onCleanup(() => release(syntax()));
+  const toBottom = () => setTimeout(() => {
+    if (!scroll || scroll.isDestroyed)
+      return;
+    scroll.stickyScroll = true;
+    scroll.scrollTo(scroll.scrollHeight);
+  }, 50);
+  onMount(toBottom);
+  createEffect(on(() => props.thread.length, toBottom, {
+    defer: true
+  }));
   const focusInput = () => setTimeout(() => {
     if (input && !input.isDestroyed)
       input.focus();
@@ -95,12 +111,24 @@ function AskPanel(props) {
   createEffect(on(() => props.panel.focused, (focused) => focused && focusInput(), {
     defer: true
   }));
-  const browse = (step) => {
+  const jump = (step) => {
     if (input && input.value !== "")
       return false;
-    const next = index() + step;
-    if (next >= 0 && next < props.thread.length)
-      setIndex(next);
+    if (!scroll)
+      return;
+    const view = scroll;
+    const tops = props.thread.flatMap((exchange) => {
+      const row = rows.get(exchange.id);
+      return row && !row.isDestroyed ? [view.scrollTop + row.y - view.viewport.y] : [];
+    });
+    const target = step < 0 ? tops.findLast((top) => top < view.scrollTop) : tops.find((top) => top > view.scrollTop);
+    if (target === undefined) {
+      if (step > 0)
+        toBottom();
+      return;
+    }
+    view.stickyScroll = false;
+    view.scrollTo(target);
   };
   const page = () => Math.max(1, (scroll?.viewport.height ?? 10) - 2);
   context.keymap.layer(() => ({
@@ -122,11 +150,11 @@ function AskPanel(props) {
     }, {
       bind: "shift+left",
       title: "Previous question",
-      run: () => browse(-1)
+      run: () => jump(-1)
     }, {
       bind: "shift+right",
       title: "Next question",
-      run: () => browse(1)
+      run: () => jump(1)
     }, {
       bind: "up",
       title: "Scroll up",
@@ -153,10 +181,11 @@ function AskPanel(props) {
     props.onAsk(question);
   };
   return (() => {
-    var _el$ = _$createElement("box"), _el$2 = _$createElement("box"), _el$3 = _$createElement("text"), _el$6 = _$createElement("box"), _el$7 = _$createElement("text"), _el$9 = _$createElement("input"), _el$0 = _$createElement("text");
+    var _el$ = _$createElement("box"), _el$2 = _$createElement("text"), _el$4 = _$createElement("scrollbox"), _el$7 = _$createElement("box"), _el$8 = _$createElement("text"), _el$0 = _$createElement("input"), _el$1 = _$createElement("text");
     _$insertNode(_el$, _el$2);
-    _$insertNode(_el$, _el$6);
-    _$insertNode(_el$, _el$0);
+    _$insertNode(_el$, _el$4);
+    _$insertNode(_el$, _el$7);
+    _$insertNode(_el$, _el$1);
     _$setProp(_el$, "flexGrow", 1);
     _$setProp(_el$, "minHeight", 0);
     _$setProp(_el$, "flexDirection", "column");
@@ -166,96 +195,91 @@ function AskPanel(props) {
     _$setProp(_el$, "paddingLeft", 2);
     _$setProp(_el$, "paddingRight", 2);
     _$setProp(_el$, "onMouseUp", focusInput);
-    _$insertNode(_el$2, _el$3);
-    _$setProp(_el$2, "flexDirection", "row");
+    _$insertNode(_el$2, _$createTextNode(`Ask`));
     _$setProp(_el$2, "flexShrink", 0);
-    _$setProp(_el$2, "gap", 2);
-    _$insertNode(_el$3, _$createTextNode(`Ask`));
-    _$insert(_el$2, _$createComponent(Show, {
+    _$use((value) => scroll = value, _el$4);
+    _$setProp(_el$4, "flexGrow", 1);
+    _$setProp(_el$4, "minHeight", 0);
+    _$setProp(_el$4, "stickyScroll", true);
+    _$setProp(_el$4, "stickyStart", "bottom");
+    _$setProp(_el$4, "scrollbarOptions", {
+      visible: false
+    });
+    _$insert(_el$4, _$createComponent(Show, {
       get when() {
-        return props.thread.length > 1;
+        return props.thread.length === 0;
       },
       get children() {
         var _el$5 = _$createElement("text");
-        _$insert(_el$5, () => `${index() + 1}/${props.thread.length}`);
+        _$insertNode(_el$5, _$createTextNode(`Ask anything about this session. Answers come from the conversation so far, and nothing you ask here is added to it.`));
+        _$setProp(_el$5, "wrapMode", "word");
         _$effect((_$p) => _$setProp(_el$5, "fg", theme().text.muted, _$p));
         return _el$5;
       }
     }), null);
-    _$insert(_el$, _$createComponent(Show, {
-      get when() {
-        return current();
+    _$insert(_el$4, _$createComponent(For, {
+      get each() {
+        return props.thread;
       },
-      get fallback() {
-        return (() => {
-          var _el$10 = _$createElement("box"), _el$11 = _$createElement("text");
-          _$insertNode(_el$10, _el$11);
-          _$setProp(_el$10, "flexGrow", 1);
-          _$insertNode(_el$11, _$createTextNode(`Ask anything about this session. Answers come from the conversation so far, and nothing you ask here is added to it.`));
-          _$setProp(_el$11, "wrapMode", "word");
-          _$effect((_$p) => _$setProp(_el$11, "fg", theme().text.muted, _$p));
-          return _el$10;
-        })();
-      },
-      children: (exchange) => [(() => {
-        var _el$13 = _$createElement("text");
-        _$setProp(_el$13, "wrapMode", "word");
+      children: (exchange) => (() => {
+        var _el$11 = _$createElement("box"), _el$12 = _$createElement("box"), _el$13 = _$createElement("box"), _el$14 = _$createElement("text"), _el$15 = _$createElement("box");
+        _$insertNode(_el$11, _el$12);
+        _$insertNode(_el$11, _el$15);
+        _$use((value) => rows.set(exchange.id, value), _el$11);
+        _$setProp(_el$11, "flexDirection", "column");
+        _$setProp(_el$11, "flexShrink", 0);
+        _$setProp(_el$11, "paddingBottom", 1);
+        _$insertNode(_el$12, _el$13);
+        _$setProp(_el$12, "border", ["left"]);
+        _$setProp(_el$12, "customBorderChars", QUESTION_BORDER);
+        _$setProp(_el$12, "flexShrink", 0);
+        _$insertNode(_el$13, _el$14);
+        _$setProp(_el$13, "paddingTop", 1);
+        _$setProp(_el$13, "paddingBottom", 1);
+        _$setProp(_el$13, "paddingLeft", 2);
+        _$setProp(_el$13, "paddingRight", 1);
         _$setProp(_el$13, "flexShrink", 0);
-        _$insert(_el$13, () => exchange().question);
-        _$effect((_p$) => {
-          var _v$12 = theme().text.base, _v$13 = TextAttributes.BOLD;
-          _v$12 !== _p$.e && (_p$.e = _$setProp(_el$13, "fg", _v$12, _p$.e));
-          _v$13 !== _p$.t && (_p$.t = _$setProp(_el$13, "attributes", _v$13, _p$.t));
-          return _p$;
-        }, {
-          e: undefined,
-          t: undefined
-        });
-        return _el$13;
-      })(), (() => {
-        var _el$14 = _$createElement("scrollbox");
-        _$use((value) => scroll = value, _el$14);
-        _$setProp(_el$14, "flexGrow", 1);
-        _$setProp(_el$14, "minHeight", 0);
-        _$setProp(_el$14, "scrollbarOptions", {
-          visible: false
-        });
-        _$insert(_el$14, _$createComponent(Switch, {
+        _$setProp(_el$14, "wrapMode", "word");
+        _$insert(_el$14, () => exchange.question);
+        _$setProp(_el$15, "paddingTop", 1);
+        _$setProp(_el$15, "paddingLeft", 3);
+        _$setProp(_el$15, "flexShrink", 0);
+        _$insert(_el$15, _$createComponent(Switch, {
           get children() {
             return [_$createComponent(Match, {
               get when() {
-                return exchange().status === "waiting";
-              },
-              get children() {
-                var _el$15 = _$createElement("text");
-                _$insert(_el$15, () => `${props.spinner} Thinking\u2026`);
-                _$effect((_$p) => _$setProp(_el$15, "fg", theme().text.muted, _$p));
-                return _el$15;
-              }
-            }), _$createComponent(Match, {
-              get when() {
-                return exchange().status === "failed";
+                return exchange.status === "waiting";
               },
               get children() {
                 var _el$16 = _$createElement("text");
-                _$setProp(_el$16, "wrapMode", "word");
-                _$insert(_el$16, () => exchange().answer);
-                _$effect((_$p) => _$setProp(_el$16, "fg", theme().text.feedback.error.base, _$p));
+                _$insert(_el$16, () => `${props.spinner} Thinking\u2026`);
+                _$effect((_$p) => _$setProp(_el$16, "fg", theme().text.muted, _$p));
                 return _el$16;
               }
             }), _$createComponent(Match, {
               get when() {
-                return exchange().status === "done";
+                return exchange.status === "failed";
               },
               get children() {
-                var _el$17 = _$createElement("markdown");
-                _$setProp(_el$17, "conceal", true);
+                var _el$17 = _$createElement("text");
+                _$setProp(_el$17, "wrapMode", "word");
+                _$insert(_el$17, () => exchange.answer);
+                _$effect((_$p) => _$setProp(_el$17, "fg", theme().text.feedback.error.base, _$p));
+                return _el$17;
+              }
+            }), _$createComponent(Match, {
+              get when() {
+                return exchange.status === "done";
+              },
+              get children() {
+                var _el$18 = _$createElement("markdown");
+                _$setProp(_el$18, "conceal", true);
                 _$effect((_p$) => {
-                  var _v$14 = exchange().answer, _v$15 = syntax(), _v$16 = theme().markdown.text, _v$17 = surface();
-                  _v$14 !== _p$.e && (_p$.e = _$setProp(_el$17, "content", _v$14, _p$.e));
-                  _v$15 !== _p$.t && (_p$.t = _$setProp(_el$17, "syntaxStyle", _v$15, _p$.t));
-                  _v$16 !== _p$.a && (_p$.a = _$setProp(_el$17, "fg", _v$16, _p$.a));
-                  _v$17 !== _p$.o && (_p$.o = _$setProp(_el$17, "bg", _v$17, _p$.o));
+                  var _v$12 = exchange.answer, _v$13 = syntax(), _v$14 = theme().markdown.text, _v$15 = surface();
+                  _v$12 !== _p$.e && (_p$.e = _$setProp(_el$18, "content", _v$12, _p$.e));
+                  _v$13 !== _p$.t && (_p$.t = _$setProp(_el$18, "syntaxStyle", _v$13, _p$.t));
+                  _v$14 !== _p$.a && (_p$.a = _$setProp(_el$18, "fg", _v$14, _p$.a));
+                  _v$15 !== _p$.o && (_p$.o = _$setProp(_el$18, "bg", _v$15, _p$.o));
                   return _p$;
                 }, {
                   e: undefined,
@@ -263,43 +287,54 @@ function AskPanel(props) {
                   a: undefined,
                   o: undefined
                 });
-                return _el$17;
+                return _el$18;
               }
             })];
           }
         }));
-        return _el$14;
-      })()]
-    }), _el$6);
-    _$insertNode(_el$6, _el$7);
-    _$insertNode(_el$6, _el$9);
-    _$setProp(_el$6, "flexDirection", "row");
-    _$setProp(_el$6, "flexShrink", 0);
-    _$setProp(_el$6, "gap", 1);
-    _$setProp(_el$6, "paddingLeft", 1);
-    _$setProp(_el$6, "paddingRight", 1);
-    _$insertNode(_el$7, _$createTextNode(`\u203A`));
+        _$effect((_p$) => {
+          var _v$16 = theme().hue.accent[200], _v$17 = raised(), _v$18 = theme().text.base;
+          _v$16 !== _p$.e && (_p$.e = _$setProp(_el$12, "borderColor", _v$16, _p$.e));
+          _v$17 !== _p$.t && (_p$.t = _$setProp(_el$12, "backgroundColor", _v$17, _p$.t));
+          _v$18 !== _p$.a && (_p$.a = _$setProp(_el$14, "fg", _v$18, _p$.a));
+          return _p$;
+        }, {
+          e: undefined,
+          t: undefined,
+          a: undefined
+        });
+        return _el$11;
+      })()
+    }), null);
+    _$insertNode(_el$7, _el$8);
+    _$insertNode(_el$7, _el$0);
+    _$setProp(_el$7, "flexDirection", "row");
     _$setProp(_el$7, "flexShrink", 0);
-    _$use((value) => input = value, _el$9);
-    _$setProp(_el$9, "flexGrow", 1);
-    _$setProp(_el$9, "onSubmit", submit);
-    _$insertNode(_el$0, _$createTextNode(`enter send \xB7 shift+\u2190/\u2192 browse \xB7 \u2191/\u2193 scroll \xB7 esc close`));
-    _$setProp(_el$0, "flexShrink", 0);
+    _$setProp(_el$7, "gap", 1);
+    _$setProp(_el$7, "paddingLeft", 1);
+    _$setProp(_el$7, "paddingRight", 1);
+    _$insertNode(_el$8, _$createTextNode(`\u203A`));
+    _$setProp(_el$8, "flexShrink", 0);
+    _$use((value) => input = value, _el$0);
+    _$setProp(_el$0, "flexGrow", 1);
+    _$setProp(_el$0, "onSubmit", submit);
+    _$insertNode(_el$1, _$createTextNode(`enter send \xB7 \u2191/\u2193 scroll \xB7 shift+\u2190/\u2192 jump \xB7 esc close`));
+    _$setProp(_el$1, "flexShrink", 0);
     _$effect((_p$) => {
-      var _v$ = surface(), _v$2 = theme().text.base, _v$3 = TextAttributes.BOLD, _v$4 = field(), _v$5 = theme().text.muted, _v$6 = props.thread.length > 0 ? "Ask a follow-up" : "Ask about this session", _v$7 = theme().text.muted, _v$8 = theme().text.base, _v$9 = theme().text.base, _v$0 = theme().text.base, _v$1 = field(), _v$10 = field(), _v$11 = theme().text.muted;
+      var _v$ = surface(), _v$2 = theme().text.base, _v$3 = TextAttributes.BOLD, _v$4 = raised(), _v$5 = theme().text.muted, _v$6 = props.thread.length > 0 ? "Ask a follow-up" : "Ask about this session", _v$7 = theme().text.muted, _v$8 = theme().text.base, _v$9 = theme().text.base, _v$0 = theme().text.base, _v$1 = raised(), _v$10 = raised(), _v$11 = theme().text.muted;
       _v$ !== _p$.e && (_p$.e = _$setProp(_el$, "backgroundColor", _v$, _p$.e));
-      _v$2 !== _p$.t && (_p$.t = _$setProp(_el$3, "fg", _v$2, _p$.t));
-      _v$3 !== _p$.a && (_p$.a = _$setProp(_el$3, "attributes", _v$3, _p$.a));
-      _v$4 !== _p$.o && (_p$.o = _$setProp(_el$6, "backgroundColor", _v$4, _p$.o));
-      _v$5 !== _p$.i && (_p$.i = _$setProp(_el$7, "fg", _v$5, _p$.i));
-      _v$6 !== _p$.n && (_p$.n = _$setProp(_el$9, "placeholder", _v$6, _p$.n));
-      _v$7 !== _p$.s && (_p$.s = _$setProp(_el$9, "placeholderColor", _v$7, _p$.s));
-      _v$8 !== _p$.h && (_p$.h = _$setProp(_el$9, "textColor", _v$8, _p$.h));
-      _v$9 !== _p$.r && (_p$.r = _$setProp(_el$9, "focusedTextColor", _v$9, _p$.r));
-      _v$0 !== _p$.d && (_p$.d = _$setProp(_el$9, "cursorColor", _v$0, _p$.d));
-      _v$1 !== _p$.l && (_p$.l = _$setProp(_el$9, "backgroundColor", _v$1, _p$.l));
-      _v$10 !== _p$.u && (_p$.u = _$setProp(_el$9, "focusedBackgroundColor", _v$10, _p$.u));
-      _v$11 !== _p$.c && (_p$.c = _$setProp(_el$0, "fg", _v$11, _p$.c));
+      _v$2 !== _p$.t && (_p$.t = _$setProp(_el$2, "fg", _v$2, _p$.t));
+      _v$3 !== _p$.a && (_p$.a = _$setProp(_el$2, "attributes", _v$3, _p$.a));
+      _v$4 !== _p$.o && (_p$.o = _$setProp(_el$7, "backgroundColor", _v$4, _p$.o));
+      _v$5 !== _p$.i && (_p$.i = _$setProp(_el$8, "fg", _v$5, _p$.i));
+      _v$6 !== _p$.n && (_p$.n = _$setProp(_el$0, "placeholder", _v$6, _p$.n));
+      _v$7 !== _p$.s && (_p$.s = _$setProp(_el$0, "placeholderColor", _v$7, _p$.s));
+      _v$8 !== _p$.h && (_p$.h = _$setProp(_el$0, "textColor", _v$8, _p$.h));
+      _v$9 !== _p$.r && (_p$.r = _$setProp(_el$0, "focusedTextColor", _v$9, _p$.r));
+      _v$0 !== _p$.d && (_p$.d = _$setProp(_el$0, "cursorColor", _v$0, _p$.d));
+      _v$1 !== _p$.l && (_p$.l = _$setProp(_el$0, "backgroundColor", _v$1, _p$.l));
+      _v$10 !== _p$.u && (_p$.u = _$setProp(_el$0, "focusedBackgroundColor", _v$10, _p$.u));
+      _v$11 !== _p$.c && (_p$.c = _$setProp(_el$1, "fg", _v$11, _p$.c));
       return _p$;
     }, {
       e: undefined,
@@ -367,7 +402,7 @@ var tui_default = Plugin.define({
     });
     const queues = new Map;
     const requests = new Set;
-    const [frame, setFrame] = createSignal2(0);
+    const [frame, setFrame] = createSignal(0);
     let ticker;
     let disposed = false;
     const thread = (sessionID) => state.threads[sessionID] ?? [];

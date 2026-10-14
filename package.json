@@ -1,6 +1,6 @@
 {
   "name": "@dhkimxx/opencode-ask",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-turn side questions for OpenCode 2, in a full-screen panel that never adds to your conversation.",
   "keywords": [
     "opencode",

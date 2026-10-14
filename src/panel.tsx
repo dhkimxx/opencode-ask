@@ -1,10 +1,31 @@
-import { TextAttributes, type InputRenderable, type ScrollBoxRenderable, type SyntaxStyle } from "@opentui/core"
+import {
+  TextAttributes,
+  type BoxRenderable,
+  type InputRenderable,
+  type ScrollBoxRenderable,
+  type SyntaxStyle,
+} from "@opentui/core"
 import type { Context, PanelInput } from "@opencode/plugin/tui/context"
-import { createEffect, createMemo, createSignal, Match, on, onCleanup, onMount, Show, Switch, type Accessor } from "solid-js"
+import { createEffect, createMemo, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js"
 import { syntaxStyle } from "./syntax"
 import type { Exchange } from "./thread"
 
 export const PANEL = "opencode-ask.thread"
+
+// The left bar OpenCode draws beside your own messages in the main transcript.
+const QUESTION_BORDER = {
+  topLeft: "",
+  topRight: "",
+  bottomLeft: "",
+  bottomRight: "",
+  horizontal: " ",
+  vertical: "┃",
+  topT: "",
+  bottomT: "",
+  leftT: "",
+  rightT: "",
+  cross: "",
+}
 
 export function AskPanel(props: {
   context: Context
@@ -18,17 +39,12 @@ export function AskPanel(props: {
   // The host draws side panels on a raised surface and full-screen panels on the base one.
   const surface = () =>
     props.panel.presentation === "panel" ? theme().background.raised.base : theme().background.base
-  const field = () =>
+  const raised = () =>
     props.panel.presentation === "panel" ? theme().background.raised.high : theme().background.raised.base
 
-  const [index, setIndex] = createSignal(Math.max(0, props.thread.length - 1))
-  const current = () => props.thread[index()]
   let input: InputRenderable | undefined
   let scroll: ScrollBoxRenderable | undefined
-
-  // A new question always brings its answer into view.
-  createEffect(on(() => props.thread.length, (length) => setIndex(Math.max(0, length - 1)), { defer: true }))
-  createEffect(on(index, () => scroll?.scrollTo(0), { defer: true }))
+  const rows = new Map<number, BoxRenderable>()
 
   // Rebuilt when the theme changes; a replaced style is freed once the renderer stops using it.
   const release = (style: SyntaxStyle) => {
@@ -44,6 +60,16 @@ export function AskPanel(props: {
   })
   onCleanup(() => release(syntax()))
 
+  // Wait a moment so the new rows are laid out before measuring the scroll height.
+  const toBottom = () =>
+    setTimeout(() => {
+      if (!scroll || scroll.isDestroyed) return
+      scroll.stickyScroll = true
+      scroll.scrollTo(scroll.scrollHeight)
+    }, 50)
+  onMount(toBottom)
+  createEffect(on(() => props.thread.length, toBottom, { defer: true }))
+
   // The host focuses the panel container after mounting, so take focus back on the next tick.
   const focusInput = () =>
     setTimeout(() => {
@@ -52,11 +78,23 @@ export function AskPanel(props: {
   onMount(focusInput)
   createEffect(on(() => props.panel.focused, (focused) => focused && focusInput(), { defer: true }))
 
-  const browse = (step: number) => {
+  // Moves the previous or next question to the top of the view.
+  const jump = (step: -1 | 1) => {
     // With text in the input, shift+arrows keep selecting text as usual.
     if (input && input.value !== "") return false
-    const next = index() + step
-    if (next >= 0 && next < props.thread.length) setIndex(next)
+    if (!scroll) return
+    const view = scroll
+    const tops = props.thread.flatMap((exchange) => {
+      const row = rows.get(exchange.id)
+      return row && !row.isDestroyed ? [view.scrollTop + row.y - view.viewport.y] : []
+    })
+    const target = step < 0 ? tops.findLast((top) => top < view.scrollTop) : tops.find((top) => top > view.scrollTop)
+    if (target === undefined) {
+      if (step > 0) toBottom()
+      return
+    }
+    view.stickyScroll = false
+    view.scrollTo(target)
   }
   const page = () => Math.max(1, (scroll?.viewport.height ?? 10) - 2)
 
@@ -76,8 +114,8 @@ export function AskPanel(props: {
           props.panel.close()
         },
       },
-      { bind: "shift+left", title: "Previous question", run: () => browse(-1) },
-      { bind: "shift+right", title: "Next question", run: () => browse(1) },
+      { bind: "shift+left", title: "Previous question", run: () => jump(-1) },
+      { bind: "shift+right", title: "Next question", run: () => jump(1) },
       { bind: "up", title: "Scroll up", run: () => scroll?.scrollBy(-1) },
       { bind: "down", title: "Scroll down", run: () => scroll?.scrollBy(1) },
       { bind: "pageup", title: "Page up", run: () => scroll?.scrollBy(-page()) },
@@ -105,60 +143,70 @@ export function AskPanel(props: {
       backgroundColor={surface()}
       onMouseUp={focusInput}
     >
-      <box flexDirection="row" flexShrink={0} gap={2}>
-        <text fg={theme().text.base} attributes={TextAttributes.BOLD}>
-          Ask
-        </text>
-        <Show when={props.thread.length > 1}>
-          <text fg={theme().text.muted}>{`${index() + 1}/${props.thread.length}`}</text>
-        </Show>
-      </box>
-      <Show
-        when={current()}
-        fallback={
-          <box flexGrow={1}>
-            <text fg={theme().text.muted} wrapMode="word">
-              Ask anything about this session. Answers come from the conversation so far, and nothing you ask here is
-              added to it.
-            </text>
-          </box>
-        }
+      <text fg={theme().text.base} attributes={TextAttributes.BOLD} flexShrink={0}>
+        Ask
+      </text>
+      <scrollbox
+        ref={(value: ScrollBoxRenderable) => (scroll = value)}
+        flexGrow={1}
+        minHeight={0}
+        stickyScroll
+        stickyStart="bottom"
+        scrollbarOptions={{ visible: false }}
       >
-        {(exchange: Accessor<Exchange>) => (
-          <>
-            <text fg={theme().text.base} attributes={TextAttributes.BOLD} wrapMode="word" flexShrink={0}>
-              {exchange().question}
-            </text>
-            <scrollbox
-              ref={(value: ScrollBoxRenderable) => (scroll = value)}
-              flexGrow={1}
-              minHeight={0}
-              scrollbarOptions={{ visible: false }}
+        <Show when={props.thread.length === 0}>
+          <text fg={theme().text.muted} wrapMode="word">
+            Ask anything about this session. Answers come from the conversation so far, and nothing you ask here is
+            added to it.
+          </text>
+        </Show>
+        <For each={props.thread}>
+          {(exchange) => (
+            <box
+              ref={(value: BoxRenderable) => rows.set(exchange.id, value)}
+              flexDirection="column"
+              flexShrink={0}
+              paddingBottom={1}
             >
-              <Switch>
-                <Match when={exchange().status === "waiting"}>
-                  <text fg={theme().text.muted}>{`${props.spinner} Thinking…`}</text>
-                </Match>
-                <Match when={exchange().status === "failed"}>
-                  <text fg={theme().text.feedback.error.base} wrapMode="word">
-                    {exchange().answer}
+              <box
+                border={["left"]}
+                borderColor={theme().hue.accent[200]}
+                customBorderChars={QUESTION_BORDER}
+                backgroundColor={raised()}
+                flexShrink={0}
+              >
+                <box paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1} flexShrink={0}>
+                  <text fg={theme().text.base} wrapMode="word">
+                    {exchange.question}
                   </text>
-                </Match>
-                <Match when={exchange().status === "done"}>
-                  <markdown
-                    content={exchange().answer}
-                    syntaxStyle={syntax()}
-                    conceal
-                    fg={theme().markdown.text}
-                    bg={surface()}
-                  />
-                </Match>
-              </Switch>
-            </scrollbox>
-          </>
-        )}
-      </Show>
-      <box flexDirection="row" flexShrink={0} gap={1} paddingLeft={1} paddingRight={1} backgroundColor={field()}>
+                </box>
+              </box>
+              <box paddingTop={1} paddingLeft={3} flexShrink={0}>
+                <Switch>
+                  <Match when={exchange.status === "waiting"}>
+                    <text fg={theme().text.muted}>{`${props.spinner} Thinking…`}</text>
+                  </Match>
+                  <Match when={exchange.status === "failed"}>
+                    <text fg={theme().text.feedback.error.base} wrapMode="word">
+                      {exchange.answer}
+                    </text>
+                  </Match>
+                  <Match when={exchange.status === "done"}>
+                    <markdown
+                      content={exchange.answer}
+                      syntaxStyle={syntax()}
+                      conceal
+                      fg={theme().markdown.text}
+                      bg={surface()}
+                    />
+                  </Match>
+                </Switch>
+              </box>
+            </box>
+          )}
+        </For>
+      </scrollbox>
+      <box flexDirection="row" flexShrink={0} gap={1} paddingLeft={1} paddingRight={1} backgroundColor={raised()}>
         <text fg={theme().text.muted} flexShrink={0}>
           ›
         </text>
@@ -171,12 +219,12 @@ export function AskPanel(props: {
           textColor={theme().text.base}
           focusedTextColor={theme().text.base}
           cursorColor={theme().text.base}
-          backgroundColor={field()}
-          focusedBackgroundColor={field()}
+          backgroundColor={raised()}
+          focusedBackgroundColor={raised()}
         />
       </box>
       <text fg={theme().text.muted} flexShrink={0}>
-        enter send · shift+←/→ browse · ↑/↓ scroll · esc close
+        enter send · ↑/↓ scroll · shift+←/→ jump · esc close
       </text>
     </box>
   )

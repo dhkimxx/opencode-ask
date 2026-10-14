@@ -5,23 +5,30 @@ Ask side questions about your [OpenCode](https://opencode.ai) session and keep t
 `/ask` opens a full-screen panel. Ask a question, read the answer, and ask follow-ups right there. When you close the panel, your session is exactly as you left it.
 
 ```text
- Ask  2/3
+ Ask
 
- Which file has the retry logic?
+ ┃
+ ┃  Which file has the retry logic?
+ ┃
 
- `src/net/retry.ts`. The `withRetry` helper wraps every request and
- backs off after each failure.
+    `src/net/retry.ts`. The `withRetry` helper wraps every request.
+
+ ┃
+ ┃  Does it back off between attempts?
+ ┃
+
+    Yes. It doubles the wait after each failure, up to 30 seconds.
 
  › Ask a follow-up
- enter send · shift+←/→ browse · ↑/↓ scroll · esc close
+ enter send · ↑/↓ scroll · shift+←/→ jump · esc close
 ```
 
 ## Features
 
-- **Follow-up questions.** Keep asking in the same panel. Each answer remembers your earlier side questions.
+- **A real side conversation.** Questions and answers stack up like the main transcript, newest at the bottom. Each answer remembers your earlier side questions.
 - **Nothing added to your session.** No new messages, no new sessions, no forks to clean up.
-- **Full-screen panel.** Answers get the whole screen until you close the panel.
-- **Browse earlier answers** with `shift+←` and `shift+→`.
+- **Full-screen panel.** The conversation gets the whole screen until you close the panel.
+- **Jump between questions** with `shift+←` and `shift+→`.
 - **Works while OpenCode is busy.** Ask while the main session is still running.
 
 ## Requirements
@@ -39,7 +46,7 @@ This installs the plugin and adds it to your `cli.json`. If OpenCode is already 
 To install a specific release, add its tag:
 
 ```sh
-opencode plugin add github:dhkimxx/opencode-ask#v0.1.0
+opencode plugin add github:dhkimxx/opencode-ask#v0.2.0
 ```
 
 Update or remove the plugin with the same name you installed it with:
@@ -68,8 +75,8 @@ To update, run `git pull` in that folder.
 | -------------------------- | ------------------------------------------------------ |
 | Ask a question             | `/ask your question`                                   |
 | Ask a follow-up            | Type in the panel and press `enter`                    |
-| See earlier answers        | `shift+←` / `shift+→` while the input is empty         |
-| Scroll an answer           | `↑` / `↓`, `page up` / `page down`, or the mouse wheel |
+| Jump to a question         | `shift+←` / `shift+→` while the input is empty         |
+| Scroll the conversation    | `↑` / `↓`, `page up` / `page down`, or the mouse wheel |
 | Close the panel            | `esc`                                                  |
 | Open the panel again       | `/ask` with no question                                |
 
