@@ -2,7 +2,7 @@
 
 Ask side questions about your [OpenCode](https://opencode.ai) session and keep the side conversation going, without adding anything to the main conversation.
 
-`/ask` opens a full-screen panel. Ask a question, read the answer, and ask follow-ups right there. When you close the panel, your session is exactly as you left it.
+`/ask` opens a full-screen side conversation. Ask a question, read the answer, and ask follow-ups right there. Switch back to the main conversation with `shift+←` and return with `shift+→`, much like side conversations in Codex CLI. When you close the side conversation, your session is exactly as you left it.
 
 ```text
  Ask
@@ -20,16 +20,16 @@ Ask side questions about your [OpenCode](https://opencode.ai) session and keep t
     Yes. It doubles the wait after each failure, up to 30 seconds.
 
  › Ask a follow-up
- enter send · ↑/↓ scroll · shift+←/→ jump · esc close
+ main working · shift+← to switch · esc to close
 ```
 
 ## Features
 
 - **A real side conversation.** Questions and answers stack up like the main transcript, newest at the bottom. Each answer remembers your earlier side questions.
 - **Nothing added to your session.** No new messages, no new sessions, no forks to clean up.
-- **Full-screen panel.** The conversation gets the whole screen until you close the panel.
-- **Jump between questions** with `shift+←` and `shift+→`.
-- **Works while OpenCode is busy.** Ask while the main session is still running.
+- **Switch back and forth.** `shift+←` shows the main conversation and `shift+→` brings the side conversation back.
+- **Closing clears it.** `esc` closes the side conversation and forgets it.
+- **Works while OpenCode is busy.** Ask while the main session is running. The footer tells you when the main conversation is working, finished, or needs your approval.
 
 ## Requirements
 
@@ -46,7 +46,7 @@ This installs the plugin and adds it to your `cli.json`. If OpenCode is already 
 To install a specific release, add its tag:
 
 ```sh
-opencode plugin add github:dhkimxx/opencode-ask#v0.2.0
+opencode plugin add github:dhkimxx/opencode-ask#v0.3.0
 ```
 
 Update or remove the plugin with the same name you installed it with:
@@ -71,25 +71,25 @@ To update, run `git pull` in that folder.
 
 ## Usage
 
-| To do this                 | Do this                                                |
-| -------------------------- | ------------------------------------------------------ |
-| Ask a question             | `/ask your question`                                   |
-| Ask a follow-up            | Type in the panel and press `enter`                    |
-| Jump to a question         | `shift+←` / `shift+→` while the input is empty         |
-| Scroll the conversation    | `↑` / `↓`, `page up` / `page down`, or the mouse wheel |
-| Close the panel            | `esc`                                                  |
-| Open the panel again       | `/ask` with no question                                |
+| To do this                        | Do this                                                |
+| --------------------------------- | ------------------------------------------------------ |
+| Ask a question                    | `/ask your question`                                   |
+| Ask a follow-up                   | Type in the side conversation and press `enter`        |
+| Switch to the main conversation   | `shift+←` while the input is empty                     |
+| Switch back to the side           | `shift+→` while the prompt is empty                    |
+| Scroll the side conversation      | `↑` / `↓`, `page up` / `page down`, or the mouse wheel |
+| Close and clear it                | `esc`, or `ctrl+c` while the input is empty            |
+
+While a side conversation is open, the main footer shows `shift+→ for ask`. If an answer arrives while you are in the main conversation, a short notice tells you it is ready.
 
 To copy part of an answer, select it with the mouse. OpenCode copies the selection for you.
-
-If an answer arrives while the panel is closed, a short notice tells you it is ready.
 
 ## How it works
 
 - Answers come from the session's model and use the conversation so far. The plugin calls OpenCode's `session.generate`, which reads the session without changing it.
 - Side questions can't use tools, so they can't read files or run commands. To continue with tools, use OpenCode's `/fork`.
 - Each new question includes your earlier side questions and answers, up to the last 20.
-- The side conversation lives in memory. Closing the panel keeps it, and quitting OpenCode clears it.
+- The side conversation lives in memory, one per session. Switching keeps it. Closing it, or quitting OpenCode, clears it and cancels any answer still being written.
 - Questions in a session are answered one at a time, in the order you asked them.
 
 ## Development

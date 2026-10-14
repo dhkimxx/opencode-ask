@@ -7,7 +7,7 @@ import { createElement as _$createElement2 } from "@opentui/solid";
 import { createComponent as _$createComponent2 } from "@opentui/solid";
 import { memo as _$memo } from "@opentui/solid";
 import { Plugin } from "@opencode/plugin/tui";
-import { createSignal, Show as Show2 } from "solid-js";
+import { createSignal as createSignal2, Show as Show2 } from "solid-js";
 
 // src/panel.tsx
 import { insert as _$insert } from "@opentui/solid";
@@ -19,7 +19,7 @@ import { insertNode as _$insertNode } from "@opentui/solid";
 import { setProp as _$setProp } from "@opentui/solid";
 import { createElement as _$createElement } from "@opentui/solid";
 import { TextAttributes } from "@opentui/core";
-import { createEffect, createMemo, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
 
 // src/syntax.ts
 import { SyntaxStyle } from "@opentui/core";
@@ -82,7 +82,6 @@ function AskPanel(props) {
   const raised = () => props.panel.presentation === "panel" ? theme().background.raised.high : theme().background.raised.base;
   let input;
   let scroll;
-  const rows = new Map;
   const release = (style) => {
     context.renderer.idle().catch(() => {}).finally(() => style.destroy());
   };
@@ -111,50 +110,35 @@ function AskPanel(props) {
   createEffect(on(() => props.panel.focused, (focused) => focused && focusInput(), {
     defer: true
   }));
-  const jump = (step) => {
-    if (input && input.value !== "")
-      return false;
-    if (!scroll)
-      return;
-    const view = scroll;
-    const tops = props.thread.flatMap((exchange) => {
-      const row = rows.get(exchange.id);
-      return row && !row.isDestroyed ? [view.scrollTop + row.y - view.viewport.y] : [];
-    });
-    const target = step < 0 ? tops.findLast((top) => top < view.scrollTop) : tops.find((top) => top > view.scrollTop);
-    if (target === undefined) {
-      if (step > 0)
-        toBottom();
-      return;
-    }
-    view.stickyScroll = false;
-    view.scrollTo(target);
-  };
   const page = () => Math.max(1, (scroll?.viewport.height ?? 10) - 2);
+  const typing = () => input !== undefined && input.value !== "";
+  const close = () => {
+    props.panel.close();
+    props.onDiscard();
+  };
   context.keymap.layer(() => ({
     priority: 10,
     commands: [{
       bind: "escape",
-      title: "Close",
-      run: () => props.panel.close()
+      title: "Close the side conversation",
+      run: close
     }, {
       bind: "ctrl+c",
-      title: "Clear input or close",
+      title: "Clear input or close the side conversation",
       run: () => {
-        if (input && input.value !== "") {
+        if (!typing())
+          return close();
+        if (input)
           input.value = "";
-          return;
-        }
-        props.panel.close();
       }
     }, {
       bind: "shift+left",
-      title: "Previous question",
-      run: () => jump(-1)
-    }, {
-      bind: "shift+right",
-      title: "Next question",
-      run: () => jump(1)
+      title: "Switch to the main conversation",
+      run: () => {
+        if (typing())
+          return false;
+        props.panel.close();
+      }
     }, {
       bind: "up",
       title: "Scroll up",
@@ -173,6 +157,23 @@ function AskPanel(props) {
       run: () => scroll?.scrollBy(page())
     }]
   }));
+  const [mainWasBusy, setMainWasBusy] = createSignal(false);
+  const mainStatus = () => {
+    const sessionID = props.panel.sessionID;
+    if ((context.data.session.permission.list(sessionID)?.length ?? 0) > 0)
+      return "main needs approval";
+    if ((context.data.session.form.list(sessionID)?.length ?? 0) > 0)
+      return "main needs input";
+    if (context.data.session.status(sessionID) === "running")
+      return "main working";
+    if (mainWasBusy())
+      return "main finished";
+  };
+  createEffect(() => {
+    if (context.data.session.status(props.panel.sessionID) === "running")
+      setMainWasBusy(true);
+  });
+  const footer = () => [mainStatus(), "shift+\u2190 to switch", "esc to close"].filter(Boolean).join(" \xB7 ");
   const submit = () => {
     const question = input?.value.trim();
     if (!input || !question)
@@ -222,64 +223,63 @@ function AskPanel(props) {
         return props.thread;
       },
       children: (exchange) => (() => {
-        var _el$11 = _$createElement("box"), _el$12 = _$createElement("box"), _el$13 = _$createElement("box"), _el$14 = _$createElement("text"), _el$15 = _$createElement("box");
+        var _el$10 = _$createElement("box"), _el$11 = _$createElement("box"), _el$12 = _$createElement("box"), _el$13 = _$createElement("text"), _el$14 = _$createElement("box");
+        _$insertNode(_el$10, _el$11);
+        _$insertNode(_el$10, _el$14);
+        _$setProp(_el$10, "flexDirection", "column");
+        _$setProp(_el$10, "flexShrink", 0);
+        _$setProp(_el$10, "paddingBottom", 1);
         _$insertNode(_el$11, _el$12);
-        _$insertNode(_el$11, _el$15);
-        _$use((value) => rows.set(exchange.id, value), _el$11);
-        _$setProp(_el$11, "flexDirection", "column");
+        _$setProp(_el$11, "border", ["left"]);
+        _$setProp(_el$11, "customBorderChars", QUESTION_BORDER);
         _$setProp(_el$11, "flexShrink", 0);
-        _$setProp(_el$11, "paddingBottom", 1);
         _$insertNode(_el$12, _el$13);
-        _$setProp(_el$12, "border", ["left"]);
-        _$setProp(_el$12, "customBorderChars", QUESTION_BORDER);
+        _$setProp(_el$12, "paddingTop", 1);
+        _$setProp(_el$12, "paddingBottom", 1);
+        _$setProp(_el$12, "paddingLeft", 2);
+        _$setProp(_el$12, "paddingRight", 1);
         _$setProp(_el$12, "flexShrink", 0);
-        _$insertNode(_el$13, _el$14);
-        _$setProp(_el$13, "paddingTop", 1);
-        _$setProp(_el$13, "paddingBottom", 1);
-        _$setProp(_el$13, "paddingLeft", 2);
-        _$setProp(_el$13, "paddingRight", 1);
-        _$setProp(_el$13, "flexShrink", 0);
-        _$setProp(_el$14, "wrapMode", "word");
-        _$insert(_el$14, () => exchange.question);
-        _$setProp(_el$15, "paddingTop", 1);
-        _$setProp(_el$15, "paddingLeft", 3);
-        _$setProp(_el$15, "flexShrink", 0);
-        _$insert(_el$15, _$createComponent(Switch, {
+        _$setProp(_el$13, "wrapMode", "word");
+        _$insert(_el$13, () => exchange.question);
+        _$setProp(_el$14, "paddingTop", 1);
+        _$setProp(_el$14, "paddingLeft", 3);
+        _$setProp(_el$14, "flexShrink", 0);
+        _$insert(_el$14, _$createComponent(Switch, {
           get children() {
             return [_$createComponent(Match, {
               get when() {
                 return exchange.status === "waiting";
               },
               get children() {
-                var _el$16 = _$createElement("text");
-                _$insert(_el$16, () => `${props.spinner} Thinking\u2026`);
-                _$effect((_$p) => _$setProp(_el$16, "fg", theme().text.muted, _$p));
-                return _el$16;
+                var _el$15 = _$createElement("text");
+                _$insert(_el$15, () => `${props.spinner} Thinking\u2026`);
+                _$effect((_$p) => _$setProp(_el$15, "fg", theme().text.muted, _$p));
+                return _el$15;
               }
             }), _$createComponent(Match, {
               get when() {
                 return exchange.status === "failed";
               },
               get children() {
-                var _el$17 = _$createElement("text");
-                _$setProp(_el$17, "wrapMode", "word");
-                _$insert(_el$17, () => exchange.answer);
-                _$effect((_$p) => _$setProp(_el$17, "fg", theme().text.feedback.error.base, _$p));
-                return _el$17;
+                var _el$16 = _$createElement("text");
+                _$setProp(_el$16, "wrapMode", "word");
+                _$insert(_el$16, () => exchange.answer);
+                _$effect((_$p) => _$setProp(_el$16, "fg", theme().text.feedback.error.base, _$p));
+                return _el$16;
               }
             }), _$createComponent(Match, {
               get when() {
                 return exchange.status === "done";
               },
               get children() {
-                var _el$18 = _$createElement("markdown");
-                _$setProp(_el$18, "conceal", true);
+                var _el$17 = _$createElement("markdown");
+                _$setProp(_el$17, "conceal", true);
                 _$effect((_p$) => {
                   var _v$12 = exchange.answer, _v$13 = syntax(), _v$14 = theme().markdown.text, _v$15 = surface();
-                  _v$12 !== _p$.e && (_p$.e = _$setProp(_el$18, "content", _v$12, _p$.e));
-                  _v$13 !== _p$.t && (_p$.t = _$setProp(_el$18, "syntaxStyle", _v$13, _p$.t));
-                  _v$14 !== _p$.a && (_p$.a = _$setProp(_el$18, "fg", _v$14, _p$.a));
-                  _v$15 !== _p$.o && (_p$.o = _$setProp(_el$18, "bg", _v$15, _p$.o));
+                  _v$12 !== _p$.e && (_p$.e = _$setProp(_el$17, "content", _v$12, _p$.e));
+                  _v$13 !== _p$.t && (_p$.t = _$setProp(_el$17, "syntaxStyle", _v$13, _p$.t));
+                  _v$14 !== _p$.a && (_p$.a = _$setProp(_el$17, "fg", _v$14, _p$.a));
+                  _v$15 !== _p$.o && (_p$.o = _$setProp(_el$17, "bg", _v$15, _p$.o));
                   return _p$;
                 }, {
                   e: undefined,
@@ -287,23 +287,23 @@ function AskPanel(props) {
                   a: undefined,
                   o: undefined
                 });
-                return _el$18;
+                return _el$17;
               }
             })];
           }
         }));
         _$effect((_p$) => {
           var _v$16 = theme().hue.accent[200], _v$17 = raised(), _v$18 = theme().text.base;
-          _v$16 !== _p$.e && (_p$.e = _$setProp(_el$12, "borderColor", _v$16, _p$.e));
-          _v$17 !== _p$.t && (_p$.t = _$setProp(_el$12, "backgroundColor", _v$17, _p$.t));
-          _v$18 !== _p$.a && (_p$.a = _$setProp(_el$14, "fg", _v$18, _p$.a));
+          _v$16 !== _p$.e && (_p$.e = _$setProp(_el$11, "borderColor", _v$16, _p$.e));
+          _v$17 !== _p$.t && (_p$.t = _$setProp(_el$11, "backgroundColor", _v$17, _p$.t));
+          _v$18 !== _p$.a && (_p$.a = _$setProp(_el$13, "fg", _v$18, _p$.a));
           return _p$;
         }, {
           e: undefined,
           t: undefined,
           a: undefined
         });
-        return _el$11;
+        return _el$10;
       })()
     }), null);
     _$insertNode(_el$7, _el$8);
@@ -318,8 +318,8 @@ function AskPanel(props) {
     _$use((value) => input = value, _el$0);
     _$setProp(_el$0, "flexGrow", 1);
     _$setProp(_el$0, "onSubmit", submit);
-    _$insertNode(_el$1, _$createTextNode(`enter send \xB7 \u2191/\u2193 scroll \xB7 shift+\u2190/\u2192 jump \xB7 esc close`));
     _$setProp(_el$1, "flexShrink", 0);
+    _$insert(_el$1, footer);
     _$effect((_p$) => {
       var _v$ = surface(), _v$2 = theme().text.base, _v$3 = TextAttributes.BOLD, _v$4 = raised(), _v$5 = theme().text.muted, _v$6 = props.thread.length > 0 ? "Ask a follow-up" : "Ask about this session", _v$7 = theme().text.muted, _v$8 = theme().text.base, _v$9 = theme().text.base, _v$0 = theme().text.base, _v$1 = raised(), _v$10 = raised(), _v$11 = theme().text.muted;
       _v$ !== _p$.e && (_p$.e = _$setProp(_el$, "backgroundColor", _v$, _p$.e));
@@ -401,11 +401,12 @@ var tui_default = Plugin.define({
       }
     });
     const queues = new Map;
-    const requests = new Set;
-    const [frame, setFrame] = createSignal(0);
+    const requests = new Map;
+    const [frame, setFrame] = createSignal2(0);
     let ticker;
     let disposed = false;
     const thread = (sessionID) => state.threads[sessionID] ?? [];
+    const exists = (sessionID, id) => thread(sessionID).some((item) => item.id === id);
     const waiting = (sessionID) => Object.entries(state.threads).some(([id, exchanges]) => (sessionID === undefined || id === sessionID) && exchanges.some((item) => item.status === "waiting"));
     const tick = () => {
       if (waiting() && !ticker)
@@ -439,22 +440,31 @@ var tui_default = Plugin.define({
         return;
       context.ui.toast.show(status === "done" ? {
         title: "Ask",
-        message: "Your answer is ready. Run /ask to read it.",
+        message: "Your answer is ready. Press shift+\u2192 to read it.",
         variant: "info",
         sessionID
       } : {
         title: "Ask",
-        message: "Your side question failed. Run /ask to see why.",
+        message: "Your side question failed. Press shift+\u2192 to see why.",
         variant: "error",
         sessionID
       });
     };
+    const discard = (sessionID) => {
+      for (const [request, owner] of requests)
+        if (owner === sessionID)
+          request.abort();
+      update((draft) => {
+        delete draft.threads[sessionID];
+      });
+      tick();
+    };
     async function answer(sessionID, id, question) {
-      if (disposed)
+      if (disposed || !exists(sessionID, id))
         return;
       const earlier = thread(sessionID).filter((item) => item.id < id);
       const request = new AbortController;
-      requests.add(request);
+      requests.set(request, sessionID);
       let status = "failed";
       let text;
       try {
@@ -474,7 +484,7 @@ var tui_default = Plugin.define({
       } finally {
         requests.delete(request);
       }
-      if (disposed)
+      if (disposed || !exists(sessionID, id))
         return;
       settle(sessionID, id, status, text);
       tick();
@@ -529,6 +539,25 @@ var tui_default = Plugin.define({
         }
       }]
     }));
+    context.keymap.layer(() => ({
+      priority: 10,
+      commands: [{
+        bind: "shift+right",
+        title: "Switch to the side conversation",
+        run: () => {
+          const route = context.ui.router.current();
+          if (route.type !== "session" || context.ui.panel.current())
+            return false;
+          if (thread(route.sessionID).length === 0)
+            return false;
+          if (context.renderer.currentFocusedEditor?.plainText)
+            return false;
+          context.ui.panel.open(PANEL, {
+            presentation: "fullscreen"
+          });
+        }
+      }]
+    }));
     context.ui.slot({
       append: "session.panel",
       render: (panel) => _$createComponent2(Show2, {
@@ -545,7 +574,8 @@ var tui_default = Plugin.define({
             get spinner() {
               return SPINNER[frame()] ?? "";
             },
-            onAsk: (question) => ask(panel.sessionID, question)
+            onAsk: (question) => ask(panel.sessionID, question),
+            onDiscard: () => discard(panel.sessionID)
           });
         }
       })
@@ -554,12 +584,15 @@ var tui_default = Plugin.define({
       append: "prompt.footer.status",
       render: (footer) => _$createComponent2(Show2, {
         get when() {
-          return _$memo(() => footer.sessionID !== undefined)() && waiting(footer.sessionID);
+          return _$memo(() => footer.sessionID !== undefined)() && thread(footer.sessionID).length > 0;
         },
         get children() {
           var _el$ = _$createElement2("text");
           _$setProp2(_el$, "flexShrink", 0);
-          _$insert2(_el$, () => `${SPINNER[frame()] ?? ""} ask`);
+          _$insert2(_el$, (() => {
+            var _c$ = _$memo(() => !!waiting(footer.sessionID));
+            return () => _c$() ? `${SPINNER[frame()] ?? ""} ask` : "shift+\u2192 for ask";
+          })());
           _$effect2((_$p) => _$setProp2(_el$, "fg", context.theme.text.muted, _$p));
           return _el$;
         }
@@ -567,7 +600,7 @@ var tui_default = Plugin.define({
     });
     return () => {
       disposed = true;
-      for (const request of requests)
+      for (const request of requests.keys())
         request.abort();
       if (ticker)
         clearInterval(ticker);

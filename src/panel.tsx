@@ -1,12 +1,6 @@
-import {
-  TextAttributes,
-  type BoxRenderable,
-  type InputRenderable,
-  type ScrollBoxRenderable,
-  type SyntaxStyle,
-} from "@opentui/core"
+import { TextAttributes, type InputRenderable, type ScrollBoxRenderable, type SyntaxStyle } from "@opentui/core"
 import type { Context, PanelInput } from "@opencode/plugin/tui/context"
-import { createEffect, createMemo, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js"
 import { syntaxStyle } from "./syntax"
 import type { Exchange } from "./thread"
 
@@ -33,6 +27,7 @@ export function AskPanel(props: {
   thread: readonly Exchange[]
   spinner: string
   onAsk: (question: string) => void
+  onDiscard: () => void
 }) {
   const context = props.context
   const theme = () => context.theme
@@ -44,7 +39,6 @@ export function AskPanel(props: {
 
   let input: InputRenderable | undefined
   let scroll: ScrollBoxRenderable | undefined
-  const rows = new Map<number, BoxRenderable>()
 
   // Rebuilt when the theme changes; a replaced style is freed once the renderer stops using it.
   const release = (style: SyntaxStyle) => {
@@ -78,50 +72,57 @@ export function AskPanel(props: {
   onMount(focusInput)
   createEffect(on(() => props.panel.focused, (focused) => focused && focusInput(), { defer: true }))
 
-  // Moves the previous or next question to the top of the view.
-  const jump = (step: -1 | 1) => {
-    // With text in the input, shift+arrows keep selecting text as usual.
-    if (input && input.value !== "") return false
-    if (!scroll) return
-    const view = scroll
-    const tops = props.thread.flatMap((exchange) => {
-      const row = rows.get(exchange.id)
-      return row && !row.isDestroyed ? [view.scrollTop + row.y - view.viewport.y] : []
-    })
-    const target = step < 0 ? tops.findLast((top) => top < view.scrollTop) : tops.find((top) => top > view.scrollTop)
-    if (target === undefined) {
-      if (step > 0) toBottom()
-      return
-    }
-    view.stickyScroll = false
-    view.scrollTo(target)
-  }
   const page = () => Math.max(1, (scroll?.viewport.height ?? 10) - 2)
+  const typing = () => input !== undefined && input.value !== ""
+
+  // Switching keeps the side conversation for shift+→; closing forgets it.
+  const close = () => {
+    props.panel.close()
+    props.onDiscard()
+  }
 
   context.keymap.layer(() => ({
     priority: 10,
     commands: [
-      { bind: "escape", title: "Close", run: () => props.panel.close() },
+      { bind: "escape", title: "Close the side conversation", run: close },
       {
         // Ctrl+C would otherwise quit OpenCode, because the main prompt is hidden behind the panel.
         bind: "ctrl+c",
-        title: "Clear input or close",
+        title: "Clear input or close the side conversation",
         run: () => {
-          if (input && input.value !== "") {
-            input.value = ""
-            return
-          }
+          if (!typing()) return close()
+          if (input) input.value = ""
+        },
+      },
+      {
+        // With text in the input, shift+← keeps selecting text as usual.
+        bind: "shift+left",
+        title: "Switch to the main conversation",
+        run: () => {
+          if (typing()) return false
           props.panel.close()
         },
       },
-      { bind: "shift+left", title: "Previous question", run: () => jump(-1) },
-      { bind: "shift+right", title: "Next question", run: () => jump(1) },
       { bind: "up", title: "Scroll up", run: () => scroll?.scrollBy(-1) },
       { bind: "down", title: "Scroll down", run: () => scroll?.scrollBy(1) },
       { bind: "pageup", title: "Page up", run: () => scroll?.scrollBy(-page()) },
       { bind: "pagedown", title: "Page down", run: () => scroll?.scrollBy(page()) },
     ],
   }))
+
+  // Like Codex, say what the main conversation is doing while it is out of view.
+  const [mainWasBusy, setMainWasBusy] = createSignal(false)
+  const mainStatus = () => {
+    const sessionID = props.panel.sessionID
+    if ((context.data.session.permission.list(sessionID)?.length ?? 0) > 0) return "main needs approval"
+    if ((context.data.session.form.list(sessionID)?.length ?? 0) > 0) return "main needs input"
+    if (context.data.session.status(sessionID) === "running") return "main working"
+    if (mainWasBusy()) return "main finished"
+  }
+  createEffect(() => {
+    if (context.data.session.status(props.panel.sessionID) === "running") setMainWasBusy(true)
+  })
+  const footer = () => [mainStatus(), "shift+← to switch", "esc to close"].filter(Boolean).join(" · ")
 
   const submit = () => {
     const question = input?.value.trim()
@@ -162,12 +163,7 @@ export function AskPanel(props: {
         </Show>
         <For each={props.thread}>
           {(exchange) => (
-            <box
-              ref={(value: BoxRenderable) => rows.set(exchange.id, value)}
-              flexDirection="column"
-              flexShrink={0}
-              paddingBottom={1}
-            >
+            <box flexDirection="column" flexShrink={0} paddingBottom={1}>
               <box
                 border={["left"]}
                 borderColor={theme().hue.accent[200]}
@@ -224,7 +220,7 @@ export function AskPanel(props: {
         />
       </box>
       <text fg={theme().text.muted} flexShrink={0}>
-        enter send · ↑/↓ scroll · shift+←/→ jump · esc close
+        {footer()}
       </text>
     </box>
   )
