@@ -589,10 +589,7 @@ var tui_default = Plugin.define({
         get children() {
           var _el$ = _$createElement2("text");
           _$setProp2(_el$, "flexShrink", 0);
-          _$insert2(_el$, (() => {
-            var _c$ = _$memo(() => !!waiting(footer.sessionID));
-            return () => _c$() ? `${SPINNER[frame()] ?? ""} ask` : "shift+\u2192 for ask";
-          })());
+          _$insert2(_el$, () => (waiting(footer.sessionID) ? `${SPINNER[frame()] ?? ""} ` : "") + "shift+\u2192 for ask");
           _$effect2((_$p) => _$setProp2(_el$, "fg", context.theme.text.muted, _$p));
           return _el$;
         }

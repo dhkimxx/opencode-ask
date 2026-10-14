@@ -179,7 +179,7 @@ export default Plugin.define({
       render: (footer) => (
         <Show when={footer.sessionID !== undefined && thread(footer.sessionID).length > 0}>
           <text fg={context.theme.text.muted} flexShrink={0}>
-            {waiting(footer.sessionID) ? `${SPINNER[frame()] ?? ""} ask` : "shift+→ for ask"}
+            {(waiting(footer.sessionID) ? `${SPINNER[frame()] ?? ""} ` : "") + "shift+→ for ask"}
           </text>
         </Show>
       ),

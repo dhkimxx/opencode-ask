@@ -46,7 +46,7 @@ This installs the plugin and adds it to your `cli.json`. If OpenCode is already 
 To install a specific release, add its tag:
 
 ```sh
-opencode plugin add github:dhkimxx/opencode-ask#v0.3.1
+opencode plugin add github:dhkimxx/opencode-ask#v0.3.2
 ```
 
 Update or remove the plugin with the same name you installed it with:
@@ -80,7 +80,7 @@ To update, run `git pull` in that folder.
 | Scroll the side conversation      | `↑` / `↓`, `page up` / `page down`, or the mouse wheel |
 | Close and clear it                | `esc`, or `ctrl+c` while the input is empty            |
 
-While a side conversation is open, the main footer shows `shift+→ for ask`. If an answer arrives while you are in the main conversation, a short notice tells you it is ready.
+While a side conversation is open, the main footer shows `shift+→ for ask`, with a spinner while an answer is being written. If an answer arrives while you are in the main conversation, a short notice tells you it is ready.
 
 To copy part of an answer, select it with the mouse. OpenCode copies the selection for you.
 

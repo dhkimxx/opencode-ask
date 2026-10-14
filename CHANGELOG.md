@@ -3,6 +3,12 @@
 All notable changes to this project are listed here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.3.2] - 2026-10-14
+
+### Changed
+
+- While a side answer is being written, the main footer keeps the `shift+→ for ask` hint next to the spinner, instead of showing only the spinner.
+
 ## [0.3.1] - 2026-10-14
 
 ### Changed
@@ -38,6 +44,7 @@ This project follows [Semantic Versioning](https://semver.org).
 - A spinner in the footer and a toast when an answer arrives while the panel is closed.
 - `ctrl+c` in the panel clears the input or closes the panel, instead of quitting OpenCode.
 
+[0.3.2]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.3.2
 [0.3.1]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dhkimxx/opencode-ask/releases/tag/v0.2.0
