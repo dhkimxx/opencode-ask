@@ -26,7 +26,7 @@ import { SyntaxStyle } from "@opentui/core";
 function rule(scope, foreground, style = {}) {
   return { scope, style: { foreground, ...style } };
 }
-function syntaxStyle(theme) {
+function syntaxStyle(theme, owner) {
   const { syntax, markdown } = theme;
   const feedback = theme.text.feedback;
   return SyntaxStyle.fromTheme([
@@ -57,7 +57,7 @@ function syntaxStyle(theme) {
     rule(["markup.list.checked"], feedback.success.base),
     rule(["diff.plus"], theme.diff.text.added, { background: theme.diff.background.added }),
     rule(["diff.minus"], theme.diff.text.removed, { background: theme.diff.background.removed })
-  ]);
+  ], owner);
 }
 
 // src/panel.tsx
@@ -86,7 +86,7 @@ function AskPanel(props) {
     context.renderer.idle().catch(() => {}).finally(() => style.destroy());
   };
   const syntax = createMemo((previous) => {
-    const next = syntaxStyle(theme());
+    const next = syntaxStyle(theme(), context.renderer.nativeScene);
     if (previous)
       release(previous);
     return next;

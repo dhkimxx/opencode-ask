@@ -1,4 +1,4 @@
-import { SyntaxStyle, type ColorInput, type ThemeTokenStyle } from "@opentui/core"
+import { SyntaxStyle, type ColorInput, type NativeResourceOwner, type ThemeTokenStyle } from "@opentui/core"
 import type { Context } from "@opencode/plugin/tui/context"
 
 type Theme = Context["theme"]
@@ -7,8 +7,8 @@ function rule(scope: string[], foreground: ColorInput, style: Omit<ThemeTokenSty
   return { scope, style: { foreground, ...style } }
 }
 
-/** Colors answers like OpenCode's own transcript, using the active theme. */
-export function syntaxStyle(theme: Theme) {
+/** Colors answers like OpenCode's own transcript, using the active theme. `owner` holds the style's native resources. */
+export function syntaxStyle(theme: Theme, owner: NativeResourceOwner) {
   const { syntax, markdown } = theme
   const feedback = theme.text.feedback
   return SyntaxStyle.fromTheme([
@@ -43,5 +43,5 @@ export function syntaxStyle(theme: Theme) {
     rule(["markup.list.checked"], feedback.success.base),
     rule(["diff.plus"], theme.diff.text.added, { background: theme.diff.background.added }),
     rule(["diff.minus"], theme.diff.text.removed, { background: theme.diff.background.removed }),
-  ])
+  ], owner)
 }

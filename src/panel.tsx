@@ -48,7 +48,7 @@ export function AskPanel(props: {
       .finally(() => style.destroy())
   }
   const syntax = createMemo((previous: SyntaxStyle | undefined) => {
-    const next = syntaxStyle(theme())
+    const next = syntaxStyle(theme(), context.renderer.nativeScene)
     if (previous) release(previous)
     return next
   })

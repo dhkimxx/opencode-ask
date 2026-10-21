@@ -33,7 +33,7 @@ Ask side questions about your [OpenCode](https://opencode.ai) session and keep t
 
 ## Requirements
 
-OpenCode 2. Tested with OpenCode 2.0.27. OpenCode 1 is not supported.
+OpenCode 2. Tested with OpenCode 2.1.2. OpenCode 1 is not supported.
 
 ## Install
 
@@ -46,7 +46,7 @@ This installs the plugin and adds it to your `cli.json`. If OpenCode is already 
 To install a specific release, add its tag:
 
 ```sh
-opencode plugin add github:dhkimxx/opencode-ask#v0.3.2
+opencode plugin add github:dhkimxx/opencode-ask#v0.3.3
 ```
 
 Update or remove the plugin with the same name you installed it with:
