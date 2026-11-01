@@ -33,7 +33,7 @@ Ask side questions about your [OpenCode](https://opencode.ai) session and keep t
 
 ## Requirements
 
-OpenCode 2. Tested with OpenCode 2.1.2. OpenCode 1 is not supported.
+OpenCode 2. Tested with OpenCode 2.2.5. OpenCode 1 is not supported.
 
 ## Install
 
@@ -120,6 +120,8 @@ bun run check
   "plugins": ["/path/to/opencode-ask"]
 }
 ```
+
+`python3 scripts/smoke.py` opens a real OpenCode TUI with your clone in a pseudo-terminal, runs Open side chat and checks that the panel opens and closes, with no model called. It needs `pip install pyte`. CI runs it on every push with the OpenCode version in the README, and every Monday with the newest OpenCode, opening an issue when that fails.
 
 `dist/` is committed on purpose. OpenCode only compiles plugin JSX outside `node_modules`, so GitHub and npm installs need the built JavaScript. Run `bun run bundle` and commit `dist/` with your change. CI fails if `dist/` is out of date.
 
